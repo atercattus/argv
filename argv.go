@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -13,6 +14,9 @@ type (
 		Names []string
 		Usage string
 
+		typ             string
+		defaultValue    interface{}
+		envName         string
 		envDefault      string
 		envDefaultIsSet bool
 	}
@@ -20,12 +24,49 @@ type (
 	Enrichmenter func(fl *Flag)
 )
 
+var (
+	Usage = func() {
+		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		PrintDefaults()
+	}
+
+	allFlags []*Flag
+)
+
 func Parse() {
 	flag.Parse()
 }
 
+func PrintDefaults() {
+	sort.Slice(allFlags, func(i, j int) bool {
+		return allFlags[i].Names[0] < allFlags[j].Names[0]
+	})
+
+	for _, fl := range allFlags {
+		sort.Strings(fl.Names)
+
+		names := `-` + strings.Join(fl.Names, `, -`)
+		if len(fl.envName) > 0 {
+			names += `, env ` + fl.envName
+		}
+
+		usage := fl.Usage
+		if len(usage) > 0 {
+			usage = "\n  \t" + usage
+		}
+
+		defaultStr := ``
+		if fl.defaultValue != nil {
+			defaultStr = fmt.Sprintf(` (default: %v)`, fl.defaultValue)
+		}
+
+		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "  %s %s%s%s\n", names, fl.typ, usage, defaultStr)
+	}
+}
+
 func BoolVar(p *bool, name string, defaultValue bool, opts ...Enrichmenter) {
 	var fl Flag
+	fl.typ = `bool`
 	fl.Names = []string{name}
 	for _, opt := range opts {
 		opt(&fl)
@@ -41,6 +82,10 @@ func BoolVar(p *bool, name string, defaultValue bool, opts ...Enrichmenter) {
 		}
 	}
 
+	fl.defaultValue = defaultValue
+
+	allFlags = append(allFlags, &fl)
+
 	for _, name := range fl.Names {
 		flag.BoolVar(p, name, defaultValue, fl.Usage)
 	}
@@ -48,6 +93,7 @@ func BoolVar(p *bool, name string, defaultValue bool, opts ...Enrichmenter) {
 
 func StringVar(p *string, name string, defaultValue string, opts ...Enrichmenter) {
 	var fl Flag
+	fl.typ = `string`
 	fl.Names = []string{name}
 	for _, opt := range opts {
 		opt(&fl)
@@ -57,6 +103,10 @@ func StringVar(p *string, name string, defaultValue string, opts ...Enrichmenter
 		defaultValue = fl.envDefault
 	}
 
+	fl.defaultValue = defaultValue
+
+	allFlags = append(allFlags, &fl)
+
 	for _, name := range fl.Names {
 		flag.StringVar(p, name, defaultValue, fl.Usage)
 	}
@@ -64,6 +114,7 @@ func StringVar(p *string, name string, defaultValue string, opts ...Enrichmenter
 
 func IntVar(p *int, name string, defaultValue int, opts ...Enrichmenter) {
 	var fl Flag
+	fl.typ = `int`
 	fl.Names = []string{name}
 	for _, opt := range opts {
 		opt(&fl)
@@ -73,6 +124,10 @@ func IntVar(p *int, name string, defaultValue int, opts ...Enrichmenter) {
 		defaultValue, _ = strconv.Atoi(fl.envDefault)
 	}
 
+	fl.defaultValue = defaultValue
+
+	allFlags = append(allFlags, &fl)
+
 	for _, name := range fl.Names {
 		flag.IntVar(p, name, defaultValue, fl.Usage)
 	}
@@ -80,6 +135,7 @@ func IntVar(p *int, name string, defaultValue int, opts ...Enrichmenter) {
 
 func WithEnv(name string) Enrichmenter {
 	return func(fl *Flag) {
+		fl.envName = name
 		fl.envDefault, fl.envDefaultIsSet = os.LookupEnv(name)
 	}
 }
@@ -94,9 +150,4 @@ func WithUsage(usage string) Enrichmenter {
 	return func(fl *Flag) {
 		fl.Usage = usage
 	}
-}
-
-func ShowUsage() {
-	_, _ = fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
-	flag.PrintDefaults()
 }
