@@ -37,6 +37,11 @@ func Parse() {
 	flag.Parse()
 }
 
+// Args returns the non-flag command-line arguments.
+func Args() []string {
+	return flag.Args()
+}
+
 func PrintDefaults() {
 	sort.Slice(allFlags, func(i, j int) bool {
 		return allFlags[i].Names[0] < allFlags[j].Names[0]
