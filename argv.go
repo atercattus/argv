@@ -139,6 +139,27 @@ func IntVar(p *int, name string, defaultValue int, opts ...Enrichmenter) {
 	}
 }
 
+func Int64Var(p *int64, name string, defaultValue int64, opts ...Enrichmenter) {
+	var fl Flag
+	fl.typ = `int`
+	fl.Names = []string{name}
+	for _, opt := range opts {
+		opt(&fl)
+	}
+
+	if fl.envDefaultIsSet {
+		defaultValue, _ = strconv.ParseInt(fl.envDefault, 10, 64)
+	}
+
+	fl.defaultValue = defaultValue
+
+	allFlags = append(allFlags, &fl)
+
+	for _, name := range fl.Names {
+		flag.Int64Var(p, name, defaultValue, fl.Usage)
+	}
+}
+
 func DurationVar(p *time.Duration, name string, defaultValue time.Duration, opts ...Enrichmenter) {
 	var fl Flag
 	fl.typ = `duration`
