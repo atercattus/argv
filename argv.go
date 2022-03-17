@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type (
@@ -135,6 +136,48 @@ func IntVar(p *int, name string, defaultValue int, opts ...Enrichmenter) {
 
 	for _, name := range fl.Names {
 		flag.IntVar(p, name, defaultValue, fl.Usage)
+	}
+}
+
+func Int64Var(p *int64, name string, defaultValue int64, opts ...Enrichmenter) {
+	var fl Flag
+	fl.typ = `int`
+	fl.Names = []string{name}
+	for _, opt := range opts {
+		opt(&fl)
+	}
+
+	if fl.envDefaultIsSet {
+		defaultValue, _ = strconv.ParseInt(fl.envDefault, 10, 64)
+	}
+
+	fl.defaultValue = defaultValue
+
+	allFlags = append(allFlags, &fl)
+
+	for _, name := range fl.Names {
+		flag.Int64Var(p, name, defaultValue, fl.Usage)
+	}
+}
+
+func DurationVar(p *time.Duration, name string, defaultValue time.Duration, opts ...Enrichmenter) {
+	var fl Flag
+	fl.typ = `duration`
+	fl.Names = []string{name}
+	for _, opt := range opts {
+		opt(&fl)
+	}
+
+	if fl.envDefaultIsSet {
+		defaultValue, _ = time.ParseDuration(fl.envDefault)
+	}
+
+	fl.defaultValue = defaultValue
+
+	allFlags = append(allFlags, &fl)
+
+	for _, name := range fl.Names {
+		flag.DurationVar(p, name, defaultValue, fl.Usage)
 	}
 }
 
